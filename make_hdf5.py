@@ -54,7 +54,7 @@ def run(config):
   config['compression'] = 'lzf' if config['compression'] else None #No compression; can also use 'lzf' 
 
   # Get dataset
-  kwargs = {'num_workers': config['num_workers'], 'pin_memory': False, 'drop_last': False}
+  kwargs = {'num_workers': config['num_workers'], 'pin_memory': False, 'drop_last': True} # 'drop_last': False
   train_loader = utils.get_data_loaders(dataset=config['dataset'],
                                         batch_size=config['batch_size'],
                                         shuffle=False,
