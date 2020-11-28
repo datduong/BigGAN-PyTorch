@@ -45,7 +45,7 @@ def run(config):
   # By default, skip init if resuming training.
   if config['resume']:
     print('Skipping initialization for training resumption...')
-    config['skip_init'] = True
+    config['skip_init'] = False # was true, but we should use false, so we init the nn.Embedding True
   config = utils.update_config_roots(config)
   device = 'cuda'
   
@@ -102,7 +102,8 @@ def run(config):
     utils.load_weights(G, D, state_dict,
                        config['weights_root'], experiment_name, 
                        config['load_weights'] if config['load_weights'] else None,
-                       G_ema if config['ema'] else None)
+                       G_ema if config['ema'] else None, strict=False, 
+                       load_optim=False) # ! set false so we train with our own nn.Embedding
 
   # If parallel, parallelize the GD module
   if config['parallel']:
@@ -130,8 +131,13 @@ def run(config):
   # a full D iteration (regardless of number of D steps and accumulations)
   D_batch_size = (config['batch_size'] * config['num_D_steps']
                   * config['num_D_accumulations'])
+
+  if config['resume']:
+    state_dict['itr'] = 0
+  # ! https://github.com/ajbrock/BigGAN-PyTorch/issues/43
   loaders = utils.get_data_loaders(**{**config, 'batch_size': D_batch_size,
                                       'start_itr': state_dict['itr']})
+
 
   # Prepare inception metrics: FID and IS
   get_inception_metrics = inception_utils.prepare_inception_metrics(config['dataset'], config['parallel'], config['no_fid'])

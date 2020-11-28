@@ -122,6 +122,8 @@ class ImageFolder(data.Dataset):
       raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                            "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
+    print ('see labels {}'.format(class_to_idx))
+    print ('len imgs {}'.format(len(imgs)))
     self.root = root
     self.imgs = imgs
     self.classes = classes

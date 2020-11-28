@@ -428,8 +428,8 @@ nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I128': 1000, 'I128_hdf5': 1000,
                'I256': 1000, 'I256_hdf5': 1000,
                'C10': 10, 'C100': 100, 
-               'NF1': 7, # ! 16 classes if we count in skin cancer, but let's try just our own images
-               'NF1_hdf5': 7
+               'NF1': 16, # ! 16 classes if we count in skin cancer, but let's try just our own images
+               'NF1_hdf5': 16
                }
 # Number of classes to put per sample sheet               
 classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
@@ -437,8 +437,8 @@ classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
                           'I128': 20, 'I128_hdf5': 20,
                           'I256': 20, 'I256_hdf5': 20,
                           'C10': 10, 'C100': 100, 
-                          'NF1': 7, # ! 16 classes
-                          'NF1_hdf5': 7
+                          'NF1': 16, # ! 16 classes
+                          'NF1_hdf5': 16
                           }
 activation_dict = {'inplace_relu': nn.ReLU(inplace=True),
                    'relu': nn.ReLU(inplace=False),
@@ -730,16 +730,38 @@ def load_weights(G, D, state_dict, weights_root, experiment_name,
   else:
     print('Loading weights from %s...' % root)
   if G is not None:
-    G.load_state_dict(
-      torch.load('%s/%s.pth' % (root, join_strings('_', ['G', name_suffix]))),
-      strict=strict)
+    # for param_tensor in G.state_dict():
+    #   print(param_tensor, "\tG\t", G.state_dict()[param_tensor].size())
+    # ! 
+    G_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G', name_suffix])))
+    try: 
+      G.load_state_dict(
+        G_state_dict, # load this to avoid label mismatch
+        strict=strict)
+    except: 
+      temp = {k:v for k,v in G_state_dict.items() if 'shared.' not in k}
+      G.load_state_dict(
+        temp, # load this to avoid label mismatch
+        strict=strict)
+    # !
     if load_optim:
       G.optim.load_state_dict(
         torch.load('%s/%s.pth' % (root, join_strings('_', ['G_optim', name_suffix]))))
   if D is not None:
-    D.load_state_dict(
-      torch.load('%s/%s.pth' % (root, join_strings('_', ['D', name_suffix]))),
-      strict=strict)
+    # for param_tensor in D.state_dict():
+    #   print(param_tensor, "\tD\t", D.state_dict()[param_tensor].size())
+    # ! 
+    D_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['D', name_suffix])))
+    try: 
+      D.load_state_dict(
+        D_state_dict,
+        strict=strict)
+    except: 
+      temp = {k:v for k,v in D_state_dict.items() if 'embed.' not in k}
+      D.load_state_dict(
+        temp,
+        strict=strict)
+    # !
     if load_optim:
       D.optim.load_state_dict(
         torch.load('%s/%s.pth' % (root, join_strings('_', ['D_optim', name_suffix]))))
@@ -747,9 +769,16 @@ def load_weights(G, D, state_dict, weights_root, experiment_name,
   for item in state_dict:
     state_dict[item] = torch.load('%s/%s.pth' % (root, join_strings('_', ['state_dict', name_suffix])))[item]
   if G_ema is not None:
-    G_ema.load_state_dict(
-      torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix]))),
-      strict=strict)
+    try: 
+      G_ema.load_state_dict(
+        torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix]))),
+        strict=strict)
+    except : 
+      G_ema_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix])))
+      temp = {k:v for k,v in G_ema_state_dict.items() if 'shared.' not in k}
+      G_ema.load_state_dict(
+        temp,
+        strict=strict)
 
 
 ''' MetricsLogger originally stolen from VoxNet source code.
@@ -885,7 +914,7 @@ def sample(G, z_, y_, config):
       G_z = G(z_, G.shared(y_))
     return G_z, y_
 
-
+# ! plot sample images
 # Sample function for sample sheets
 def sample_sheet(G, classes_per_sheet, num_classes, samples_per_class, parallel,
                  samples_root, experiment_name, folder_number, z_=None):
@@ -895,7 +924,7 @@ def sample_sheet(G, classes_per_sheet, num_classes, samples_per_class, parallel,
   if not os.path.isdir('%s/%s/%d' % (samples_root, experiment_name, folder_number)):
     os.mkdir('%s/%s/%d' % (samples_root, experiment_name, folder_number))
   # loop over total number of sheets
-  for i in range(num_classes // classes_per_sheet):
+  for i in range(num_classes // classes_per_sheet): # ! loop in order
     ims = []
     y = torch.arange(i * classes_per_sheet, (i + 1) * classes_per_sheet, device='cuda')
     for j in range(samples_per_class):
@@ -952,7 +981,7 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
     zs = zs.half()
   with torch.no_grad():
     if parallel:
-      out_ims = nn.parallel.data_parallel(G, (zs, ys)).data.cpu()
+      out_ims = nn.parallel.data_parallel(G, (zs, ys)).data.cpu() # ! do the interpolation here.
     else:
       out_ims = G(zs, ys).data.cpu()
   interp_style = '' + ('Z' if not fix_z else '') + ('Y' if not fix_y else '')
@@ -961,6 +990,11 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                                                 sheet_number)
   torchvision.utils.save_image(out_ims, image_filename,
                                nrow=num_midpoints + 2, normalize=True)
+  # ! to back track
+  print ('\n\nsee index (zs, ys) used for interpolation {}'.format(image_filename))
+  print (zs)
+  print (ys)
+  print ('\n\n')
 
 
 # Convenience debugging function to print out gradnorms and shape from each layer
