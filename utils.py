@@ -437,11 +437,11 @@ nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I128': 1000, 'I128_hdf5': 1000,
                'I256': 1000, 'I256_hdf5': 1000,
                'C10': 10, 'C100': 100, 
-               'NF1': 16, # ! 16 classes if we count in skin cancer, but let's try just our own images
-               'NF1_hdf5': 16, 
+               'NF1': 15, # ! 15 classes if we count in skin cancer, but let's try just our own images
+               'NF1_hdf5': 15, 
                'NF1Zoom': 7, 'NF1Zoom_hdf5': 7, 
-               'NF1ZoomIsic19': 16, 'NF1ZoomIsic19_hdf5': 16, 
-               'Isic19': 9, 'Isic19_hdf5': 9
+               'NF1ZoomIsic19': 15, 'NF1ZoomIsic19_hdf5': 15, 
+               'Isic19': 8, 'Isic19_hdf5': 8
                }
 # Number of classes to put per sample sheet               
 classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
@@ -449,11 +449,11 @@ classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
                           'I128': 20, 'I128_hdf5': 20,
                           'I256': 20, 'I256_hdf5': 20,
                           'C10': 10, 'C100': 100, 
-                          'NF1': 16, # ! 16 classes
-                          'NF1_hdf5': 16,
+                          'NF1': 15, # ! 15 classes
+                          'NF1_hdf5': 15,
                           'NF1Zoom': 7, 'NF1Zoom_hdf5': 7, 
-                          'NF1ZoomIsic19': 16, 'NF1ZoomIsic19_hdf5': 16, 
-                          'Isic19': 9, 'Isic19_hdf5': 9
+                          'NF1ZoomIsic19': 15, 'NF1ZoomIsic19_hdf5': 15, 
+                          'Isic19': 8, 'Isic19_hdf5': 8
                           }
 activation_dict = {'inplace_relu': nn.ReLU(inplace=True),
                    'relu': nn.ReLU(inplace=False),
