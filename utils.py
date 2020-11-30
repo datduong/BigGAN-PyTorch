@@ -406,14 +406,20 @@ dset_dict = {'I32': dset.ImageFolder, 'I64': dset.ImageFolder,
              'I32_hdf5': dset.ILSVRC_HDF5, 'I64_hdf5': dset.ILSVRC_HDF5, 
              'I128_hdf5': dset.ILSVRC_HDF5, 'I256_hdf5': dset.ILSVRC_HDF5,
              'C10': dset.CIFAR10, 'C100': dset.CIFAR100,
-             'NF1': dset.ImageFolder, 'NF1_hdf5': dset.ILSVRC_HDF5
+             'NF1': dset.ImageFolder, 'NF1_hdf5': dset.ILSVRC_HDF5,
+             'NF1Zoom': dset.ImageFolder, 'NF1Zoom_hdf5': dset.ILSVRC_HDF5, 
+             'NF1ZoomIsic19': dset.ImageFolder, 'NF1ZoomIsic19_hdf5': dset.ILSVRC_HDF5, 
+             'Isic19': dset.ImageFolder, 'Isic19_hdf5': dset.ILSVRC_HDF5
              }
 imsize_dict = {'I32': 32, 'I32_hdf5': 32,
                'I64': 64, 'I64_hdf5': 64,
                'I128': 128, 'I128_hdf5': 128,
                'I256': 256, 'I256_hdf5': 256,
                'C10': 32, 'C100': 32,
-               'NF1': 128, 'NF1_hdf5': 128
+               'NF1': 128, 'NF1_hdf5': 128,
+               'NF1Zoom': 128, 'NF1Zoom_hdf5': 128, 
+               'NF1ZoomIsic19': 128, 'NF1ZoomIsic19_hdf5': 128, 
+               'Isic19': 128, 'Isic19_hdf5': 128
                }
 root_dict = {'I32': 'ImageNet', 'I32_hdf5': 'ILSVRC32.hdf5',
              'I64': 'ImageNet', 'I64_hdf5': 'ILSVRC64.hdf5',
@@ -421,7 +427,10 @@ root_dict = {'I32': 'ImageNet', 'I32_hdf5': 'ILSVRC32.hdf5',
              'I256': 'ImageNet', 'I256_hdf5': 'ILSVRC256.hdf5',
              'C10': 'cifar', 'C100': 'cifar', 
              'NF1': 'OneLabelOneFolder', # ! our own data
-             'NF1_hdf5': 'ILSVRC128.hdf5'
+             'NF1_hdf5': 'ILSVRC128.hdf5',
+             'NF1Zoom': 'OneLabelOneFolder', 'NF1Zoom_hdf5': 'ILSVRC128.hdf5', 
+             'NF1ZoomIsic19': 'OneLabelOneFolder', 'NF1ZoomIsic19_hdf5': 'ILSVRC128.hdf5', 
+             'Isic19': 'OneLabelOneFolder', 'Isic19_hdf5': 'ILSVRC128.hdf5'
              }
 nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I64': 1000, 'I64_hdf5': 1000,
@@ -429,7 +438,10 @@ nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
                'I256': 1000, 'I256_hdf5': 1000,
                'C10': 10, 'C100': 100, 
                'NF1': 16, # ! 16 classes if we count in skin cancer, but let's try just our own images
-               'NF1_hdf5': 16
+               'NF1_hdf5': 16, 
+               'NF1Zoom': 7, 'NF1Zoom_hdf5': 7, 
+               'NF1ZoomIsic19': 16, 'NF1ZoomIsic19_hdf5': 16, 
+               'Isic19': 9, 'Isic19_hdf5': 9
                }
 # Number of classes to put per sample sheet               
 classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
@@ -438,7 +450,10 @@ classes_per_sheet_dict = {'I32': 50, 'I32_hdf5': 50,
                           'I256': 20, 'I256_hdf5': 20,
                           'C10': 10, 'C100': 100, 
                           'NF1': 16, # ! 16 classes
-                          'NF1_hdf5': 16
+                          'NF1_hdf5': 16,
+                          'NF1Zoom': 7, 'NF1Zoom_hdf5': 7, 
+                          'NF1ZoomIsic19': 16, 'NF1ZoomIsic19_hdf5': 16, 
+                          'Isic19': 9, 'Isic19_hdf5': 9
                           }
 activation_dict = {'inplace_relu': nn.ReLU(inplace=True),
                    'relu': nn.ReLU(inplace=False),
@@ -991,10 +1006,10 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
   torchvision.utils.save_image(out_ims, image_filename,
                                nrow=num_midpoints + 2, normalize=True)
   # ! to back track
-  print ('\n\nsee index (zs, ys) used for interpolation {}'.format(image_filename))
-  print (zs)
-  print (ys)
-  print ('\n\n')
+  # print ('\n\nsee index (zs, ys) used for interpolation {}'.format(image_filename))
+  # print (zs)
+  # print (ys)
+  # print ('\n\n')
 
 
 # Convenience debugging function to print out gradnorms and shape from each layer

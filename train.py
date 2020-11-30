@@ -174,6 +174,10 @@ def run(config):
       pbar = utils.progress(loaders[0],displaytype='s1k' if config['use_multiepoch_sampler'] else 'eta')
     else:
       pbar = tqdm(loaders[0])
+
+    # ! skip last batch explicitly. 
+    number_batch_per_epoch = len ( loaders[0] ) 
+
     for i, (x, y) in enumerate(pbar):
       # Increment the iteration counter
       state_dict['itr'] += 1
@@ -187,7 +191,15 @@ def run(config):
         x, y = x.to(device).half(), y.to(device)
       else:
         x, y = x.to(device), y.to(device)
-      metrics = train(x, y)
+
+      # ! error here. on the last batch. can hack around with batchsize to evenly split the data, but easier to just skip last batch
+      if i == number_batch_per_epoch-1: # index start 0, so len=2, we stop at 1. 
+        metrics = { 'G_loss': 0, 
+                    'D_loss_real': 0,
+                    'D_loss_fake': 0  }
+      else: 
+        metrics = train(x, y)
+        
       train_log.log(itr=int(state_dict['itr']), **metrics)
       
       # Every sv_log_interval, log singular values
@@ -202,7 +214,8 @@ def run(config):
                            for key in metrics]), end=' ')
 
       # Save weights and copies as configured at specified interval
-      if not (state_dict['itr'] % config['save_every']):
+      # ! we also save at end of epoch
+      if (i == number_batch_per_epoch-1) or (not (state_dict['itr'] % config['save_every'])):
         if config['G_eval_mode']:
           print('Switchin G to eval mode...')
           G.eval()
@@ -212,14 +225,17 @@ def run(config):
                                   state_dict, config, experiment_name)
 
       # Test every specified interval
-      if not (state_dict['itr'] % config['test_every']):
+      # ! we also save at end of epoch
+      if (i == number_batch_per_epoch-1) or (not (state_dict['itr'] % config['test_every'])):
         if config['G_eval_mode']:
           print('Switchin G to eval mode...')
           G.eval()
         train_fns.test(G, D, G_ema, z_, y_, state_dict, config, sample,
                        get_inception_metrics, experiment_name, test_log)
+    
     # Increment epoch counter at end of epoch
     state_dict['epoch'] += 1
+
 
 
 def main():
