@@ -1,3 +1,5 @@
+
+
 import os,sys,re,pickle
 import pandas as pd 
 import numpy as np 
@@ -58,24 +60,29 @@ fout.close()
 
 # ! script to run on gpu
 
-script="""
-#!/bin/bash
+
+import os,sys,re,pickle
+import pandas as pd 
+import numpy as np 
+from datetime import datetime
+
+scriptbase="""#!/bin/bash
 
 source /data/$USER/conda/etc/profile.d/conda.sh
 conda activate py37
 
 # sinteractive --time=1:00:00 --gres=gpu:p100:4 --mem=20g --cpus-per-task=32 
-# sbatch --partition=gpu --time=2-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 launch_BigGAN_bs512x4_pretrain_var5.sh
+# sbatch --partition=gpu --time=2-00:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 launch_BigGAN_bs512x4_pretrain_var5.sh
 
 cd /data/duongdb/BigGAN-PyTorch/
 
 python train.py \
---base_root /data/duongdb/SkinConditionImages11052020/Recrop/ \
---data_root /data/duongdb/SkinConditionImages11052020/Recrop/ \
---dataset NF1Recrop_hdf5 --parallel --shuffle --num_workers 16 --batch_size 152 --load_in_mem  \
+--base_root rootname \
+--data_root rootname \
+--dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem  \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
---G_attn 64 --D_attn 64 \
+--G_attn 32 --D_attn 32 \
 --G_nl inplace_relu --D_nl inplace_relu \
 --SN_eps 1e-6 --BN_eps 1e-5 --adam_eps 1e-6 \
 --G_ortho 0.0 \
@@ -83,17 +90,40 @@ python train.py \
 --G_init ortho --D_init ortho \
 --hier --dim_z 120 --shared_dim 128 \
 --G_eval_mode \
---G_ch 96 --D_ch 96 \
+--G_ch arch_size --D_ch arch_size \
 --ema --use_ema --ema_start 2000 \
 --test_every 200 --save_every 200 --num_best_copies 5 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
---resume \
---experiment_name_suffix Var10 \
---z_var 10
+--z_var variance
 
-#! with 2019 skin cancer, use larger batch? 16 labels
-
-# 725 484 8180 5113@128 4812@136 4675@140 4545@144 3896@168--fail 4306@152
-# num_G_accumulations https://github.com/ajbrock/BigGAN-PyTorch/issues/70
-
+# --pretrain /data/duongdb/BigGAN-PyTorch/100k \
+  
 """
+
+os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
+
+batchsize = 128 # ! 152 batch is okay. larger size is recommended... but does it really matter when our data is smaller ? 
+arch_size = 32 # default for img net 96, don't have a smaller pretrained weight # ! not same as G_attn
+variance = 10
+dataset_name = {'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/',
+                'NF1Zoom_hdf5':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
+                }
+
+count=0
+for dataname in dataset_name: 
+  #
+  count = count+1
+  print (dataname)
+  script = re.sub('arch_size',str(arch_size),scriptbase)
+  script = re.sub('batchsize',str(batchsize),script)
+  script = re.sub('variance',str(variance),script)
+  script = re.sub('dataset_name',dataname,script)
+  script = re.sub('rootname',dataset_name[dataname],script)
+  #
+  now = datetime.now() # current date and time
+  scriptname = 'script'+str(count)+'-'+now.strftime("%m-%d-%H-%M-%S")+'.sh'
+  fout = open(scriptname,'w')
+  fout.write(script)
+  fout.close()
+  os.system('sbatch --partition=gpu --time=2-00:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+
