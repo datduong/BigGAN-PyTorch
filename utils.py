@@ -252,7 +252,10 @@ def prepare_parser():
     help='Default location where data is stored (default: %(default)s)')
   parser.add_argument(
     '--weights_root', type=str, default='weights',
-    help='Default location to store weights (default: %(default)s)')
+    help='Default location to store weights (default: %(default)s)') 
+  parser.add_argument(
+    '--pretrain', type=str, default='',
+    help='Default location where pretrain weights are (default: %(default)s)') 
   parser.add_argument(
     '--logs_root', type=str, default='logs',
     help='Default location to store logs (default: %(default)s)')
@@ -270,6 +273,10 @@ def prepare_parser():
   parser.add_argument(
     '--experiment_name', type=str, default='',
     help='Optionally override the automatic experiment naming with this arg. '
+         '(default: %(default)s)')
+  parser.add_argument(
+    '--experiment_name_suffix', type=str, default='', # ! 
+    help='Add our own name suff to the automatic experiment naming with this arg. '
          '(default: %(default)s)')
   parser.add_argument(
     '--config_from_name', action='store_true', default=False,
@@ -737,62 +744,61 @@ def save_weights(G, D, state_dict, weights_root, experiment_name,
 
 # Load a model's weights, optimizer, and the state_dict
 def load_weights(G, D, state_dict, weights_root, experiment_name, 
-                 name_suffix=None, G_ema=None, strict=True, load_optim=True):
-  root = '/'.join([weights_root, experiment_name])
+                 name_suffix=None, G_ema=None, strict=True, load_optim=True, pretrain=False):
+  
+  if pretrain: 
+    root = pretrain # ! load in a fixed pretrained weight, so we don't have to copy
+  else: 
+    root = '/'.join([weights_root, experiment_name])
+
   if name_suffix:
-    print('Loading %s weights from %s...' % (name_suffix, root))
+    print('\nLoading %s weights from %s...\n' % (name_suffix, root))
   else:
-    print('Loading weights from %s...' % root)
+    print('\nLoading weights from %s...\n' % root)
+
   if G is not None:
     # for param_tensor in G.state_dict():
     #   print(param_tensor, "\tG\t", G.state_dict()[param_tensor].size())
     # ! 
     G_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G', name_suffix])))
     try: 
-      G.load_state_dict(
-        G_state_dict, # load this to avoid label mismatch
-        strict=strict)
+      G.load_state_dict( G_state_dict, strict=strict)
     except: 
-      temp = {k:v for k,v in G_state_dict.items() if 'shared.' not in k}
-      G.load_state_dict(
-        temp, # load this to avoid label mismatch
-        strict=strict)
+      temp = {k:v for k,v in G_state_dict.items() if 'shared.' not in k} # ! load this to avoid label mismatch
+      G.load_state_dict( temp, strict=strict )
     # !
     if load_optim:
       G.optim.load_state_dict(
         torch.load('%s/%s.pth' % (root, join_strings('_', ['G_optim', name_suffix]))))
+      
   if D is not None:
     # for param_tensor in D.state_dict():
     #   print(param_tensor, "\tD\t", D.state_dict()[param_tensor].size())
     # ! 
     D_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['D', name_suffix])))
     try: 
-      D.load_state_dict(
-        D_state_dict,
-        strict=strict)
+      D.load_state_dict( D_state_dict, strict=strict)
     except: 
       temp = {k:v for k,v in D_state_dict.items() if 'embed.' not in k}
-      D.load_state_dict(
-        temp,
-        strict=strict)
+      D.load_state_dict( temp, strict=strict )
     # !
     if load_optim:
       D.optim.load_state_dict(
         torch.load('%s/%s.pth' % (root, join_strings('_', ['D_optim', name_suffix]))))
+
   # Load state dict
   for item in state_dict:
     state_dict[item] = torch.load('%s/%s.pth' % (root, join_strings('_', ['state_dict', name_suffix])))[item]
+  
   if G_ema is not None:
     try: 
       G_ema.load_state_dict(
         torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix]))),
         strict=strict)
     except : 
-      G_ema_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix])))
-      temp = {k:v for k,v in G_ema_state_dict.items() if 'shared.' not in k}
-      G_ema.load_state_dict(
-        temp,
-        strict=strict)
+      G_ema_state_dict = torch.load('%s/%s.pth' % (root, join_strings('_', ['G_ema', name_suffix]))) 
+      temp = {k:v for k,v in G_ema_state_dict.items() if 'shared.' not in k} # ! load this to avoid label mismatch
+      G_ema.load_state_dict( temp, strict=strict )
 
 
 ''' MetricsLogger originally stolen from VoxNet source code.
@@ -1072,6 +1078,7 @@ def name_from_config(config):
   'Gshared' if config['G_shared'] else None,
   'hier' if config['hier'] else None,
   'ema' if config['ema'] else None,
+  'v%s' % config['z_var'], # ! we will add in variance names
   config['name_suffix'] if config['name_suffix'] else None,
   ]
   if item is not None])

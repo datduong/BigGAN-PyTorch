@@ -312,7 +312,7 @@ class Discriminator(nn.Module):
     # Fp16?
     self.fp16 = D_fp16
     # Architecture
-    self.arch = D_arch(self.ch, self.attention)[resolution]
+    self.arch = D_arch(self.ch, self.attention)[resolution] # ! @D_ch specifies how large the model is
 
     # Which convs, batchnorms, and linear layers to use
     # No option to turn off SN in D right now

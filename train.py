@@ -62,6 +62,8 @@ def run(config):
   model = __import__(config['model'])
   experiment_name = (config['experiment_name'] if config['experiment_name']
                        else utils.name_from_config(config))
+  # ! let's retain default names but add just 1 thing on. 
+  experiment_name = experiment_name + config['experiment_name_suffix']
   print('Experiment name is %s' % experiment_name)
 
   # Next, build the model
@@ -102,8 +104,18 @@ def run(config):
     utils.load_weights(G, D, state_dict,
                        config['weights_root'], experiment_name, 
                        config['load_weights'] if config['load_weights'] else None,
-                       G_ema if config['ema'] else None, strict=False, 
-                       load_optim=False) # ! set false so we train with our own nn.Embedding
+                       G_ema if config['ema'] else None, strict=True, 
+                       load_optim=True, 
+                       pretrain=False) 
+
+  if config['pretrain']: # ! 
+    print('Loading weights...')
+    utils.load_weights(G, D, state_dict,
+                       'none', experiment_name, 
+                       config['load_weights'] if config['load_weights'] else None,
+                       G_ema if config['ema'] else None, strict=False, # ! set false so we can add new layers
+                       load_optim=False, # ! set false so we train with our own nn.Embedding
+                       pretrain=config['pretrain']) 
 
   # If parallel, parallelize the GD module
   if config['parallel']:
@@ -146,11 +158,13 @@ def run(config):
   # Allow for different batch sizes in G
   G_batch_size = max(config['G_batch_size'], config['batch_size'])
   z_, y_ = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'],
-                             device=device, fp16=config['G_fp16'])
+                             device=device, fp16=config['G_fp16'], 
+                             z_var=config['z_var']) # ! add in variance during training ? 
   # Prepare a fixed z & y to see individual sample evolution throghout training
   fixed_z, fixed_y = utils.prepare_z_y(G_batch_size, G.dim_z,
                                        config['n_classes'], device=device,
-                                       fp16=config['G_fp16'])  
+                                       fp16=config['G_fp16'], 
+                                       z_var=config['z_var'])  
   fixed_z.sample_()
   fixed_y.sample_()
   # Loaders are loaded, prepare the training function
