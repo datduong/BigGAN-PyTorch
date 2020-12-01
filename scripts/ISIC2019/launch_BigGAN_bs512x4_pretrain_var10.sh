@@ -4,15 +4,15 @@ source /data/$USER/conda/etc/profile.d/conda.sh
 conda activate py37
 
 # sinteractive --time=1:00:00 --gres=gpu:p100:4 --mem=20g --cpus-per-task=32 
-# sbatch --partition=gpu --time=2-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 launch_BigGAN_bs512x4_pretrain_var5.sh
+# sbatch --partition=gpu --time=5-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 launch_BigGAN_bs512x4_pretrain_var5.sh
 
 cd /data/duongdb/BigGAN-PyTorch/
 
 
 python train.py \
---base_root /data/duongdb/SkinConditionImages11052020/ZoomCenter/ \
---data_root /data/duongdb/SkinConditionImages11052020/ZoomCenter/ \
---dataset NF1Zoom_hdf5 --parallel --shuffle --num_workers 16 --batch_size 152 --load_in_mem  \
+--base_root /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/ \
+--data_root /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/ \
+--dataset Isic19_hdf5 --parallel --shuffle --num_workers 16 --batch_size 152 --load_in_mem  \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -25,7 +25,7 @@ python train.py \
 --G_eval_mode \
 --G_ch 96 --D_ch 96 \
 --ema --use_ema --ema_start 2000 \
---test_every 100 --save_every 100 --num_best_copies 5 --num_save_copies 2 --seed 0 \
+--test_every 4000 --save_every 4000 --num_best_copies 5 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --resume \
 --experiment_name Var10 \

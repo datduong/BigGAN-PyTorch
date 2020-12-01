@@ -5,15 +5,19 @@ python calculate_inception_moments.py --dataset I128_hdf5 --data_root data
 
 # ! my own stuffs. 
 cd /data/duongdb/BigGAN-PyTorch/
-rm -rf NF1_i*
-python make_hdf5.py --dataset NF1 --batch_size 64 --data_root /data/duongdb/SkinConditionImages11052020/Recrop/
+rm -rf NF1Recrop*
+python make_hdf5.py --dataset NF1Recrop --batch_size 64 --data_root /data/duongdb/SkinConditionImages11052020/Recrop/
 cd /data/duongdb/SkinConditionImages11052020/Recrop/
 mv ILSVRC128.hdf5 /data/duongdb/SkinConditionImages11052020/Recrop/data/
 
 source /data/$USER/conda/etc/profile.d/conda.sh
 conda activate py37
 cd /data/duongdb/BigGAN-PyTorch/
-python calculate_inception_moments.py --dataset NF1_hdf5 --data_root /data/duongdb/SkinConditionImages11052020/Recrop/data
+python calculate_inception_moments.py --dataset NF1Recrop_hdf5 --data_root /data/duongdb/SkinConditionImages11052020/Recrop/data
+
+mkdir /data/duongdb/SkinConditionImages11052020/Recrop/weights/Var10
+scp /data/duongdb/BigGAN-PyTorch/100k/* /data/duongdb/SkinConditionImages11052020/Recrop/weights/Var10
+
 
 
 
@@ -33,3 +37,27 @@ python calculate_inception_moments.py --dataset NF1Zoom_hdf5 --data_root /data/d
 
 mkdir /data/duongdb/SkinConditionImages11052020/ZoomCenter/weights/Var10
 scp /data/duongdb/BigGAN-PyTorch/100k/* /data/duongdb/SkinConditionImages11052020/ZoomCenter/weights/Var10
+
+
+
+
+# ! just only isic19
+cd /data/duongdb/BigGAN-PyTorch/
+rm -rf Isic19*
+python make_hdf5.py --dataset Isic19 --batch_size 64 --data_root /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/
+cd /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/
+mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/data/
+mv ILSVRC128.hdf5 /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/data/
+
+source /data/$USER/conda/etc/profile.d/conda.sh
+conda activate py37
+cd /data/duongdb/BigGAN-PyTorch/
+python calculate_inception_moments.py --dataset Isic19_hdf5 --data_root /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/data
+
+mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/weights/
+mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/samples/
+mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/logs/
+
+mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/weights/Var10
+scp /data/duongdb/BigGAN-PyTorch/100k/* /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/weights/Var10
+

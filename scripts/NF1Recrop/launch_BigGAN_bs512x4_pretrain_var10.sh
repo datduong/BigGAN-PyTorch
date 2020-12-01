@@ -12,7 +12,7 @@ cd /data/duongdb/BigGAN-PyTorch/
 python train.py \
 --base_root /data/duongdb/SkinConditionImages11052020/ZoomCenter/ \
 --data_root /data/duongdb/SkinConditionImages11052020/ZoomCenter/ \
---dataset NF1Zoom_hdf5 --parallel --shuffle --num_workers 16 --batch_size 152 --load_in_mem  \
+--dataset NF1Recrop_hdf5 --parallel --shuffle --num_workers 16 --batch_size 152 --load_in_mem  \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -25,7 +25,7 @@ python train.py \
 --G_eval_mode \
 --G_ch 96 --D_ch 96 \
 --ema --use_ema --ema_start 2000 \
---test_every 100 --save_every 100 --num_best_copies 5 --num_save_copies 2 --seed 0 \
+--test_every 200 --save_every 200 --num_best_copies 5 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --resume \
 --experiment_name Var10 \
