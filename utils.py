@@ -582,10 +582,12 @@ def get_data_loaders(dataset, data_root=None, augment=False, batch_size=64,
       if dataset in ['C10', 'C100']:
         train_transform = [transforms.RandomCrop(32, padding=4),
                            transforms.RandomHorizontalFlip()]
+      elif ('NF1' in dataset) or ('Isic' in dataset): # ! add in our own augmentation ?
+        train_transform = [transforms.RandomRotation(180)]
       else:
-        train_transform = [RandomCropLongEdge(),
-                         transforms.Resize(image_size),
-                         transforms.RandomHorizontalFlip()]
+        train_transform = [ RandomCropLongEdge(),
+                            transforms.Resize(image_size),
+                            transforms.RandomHorizontalFlip()]
     else:
       print('Data will not be augmented...')
       if dataset in ['C10', 'C100']:
@@ -593,9 +595,11 @@ def get_data_loaders(dataset, data_root=None, augment=False, batch_size=64,
       else:
         train_transform = [CenterCropLongEdge(), transforms.Resize(image_size)]
       # train_transform = [transforms.Resize(image_size), transforms.CenterCrop]
+
     train_transform = transforms.Compose(train_transform + [
                      transforms.ToTensor(),
                      transforms.Normalize(norm_mean, norm_std)])
+
   train_set = which_dataset(root=data_root, transform=train_transform,
                             load_in_mem=load_in_mem, **dataset_kwargs)
 
@@ -626,10 +630,11 @@ def seed_rng(seed):
 
 # Utility to peg all roots to a base root
 # If a base root folder is provided, peg all other root folders to it.
-def update_config_roots(config):
+def update_config_roots(config, suffix=['data', 'weights', 'logs', 'samples']):
   if config['base_root']:
     print('Pegging all root folders to base root %s' % config['base_root'])
-    for key in ['data', 'weights', 'logs', 'samples']:
+    for key in suffix:
+      # ! this add "data" into the root, so we will need to move everything into the "data" folder ?? may not be great for us.
       config['%s_root' % key] = '%s/%s' % (config['base_root'], key)
   return config
 
@@ -979,22 +984,34 @@ def interp(x0, x1, num_midpoints):
 # Supports full, class-wise and intra-class interpolation
 def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                  samples_root, experiment_name, folder_number, sheet_number=0,
-                 fix_z=False, fix_y=False, device='cuda'):
+                 fix_z=False, fix_y=False, device='cuda', z_var=1):
+  
+  # ! edit this function to print labels, and use z-sampler instead of torch.randn
+  scaler = np.sqrt(z_var)
+  
+  # ! scale @zs by the variance otherwise it is just a N(0,1) from the torch.randn
   # Prepare zs and ys
   if fix_z: # If fix Z, only sample 1 z per row
-    zs = torch.randn(num_per_sheet, 1, G.dim_z, device=device)
+    zs = torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler # ! cx ~ N(0, c^2 var(x))
     zs = zs.repeat(1, num_midpoints + 2, 1).view(-1, G.dim_z)
   else:
-    zs = interp(torch.randn(num_per_sheet, 1, G.dim_z, device=device),
-                torch.randn(num_per_sheet, 1, G.dim_z, device=device),
+    zs = interp(torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
+                torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
                 num_midpoints).view(-1, G.dim_z)
   if fix_y: # If fix y, only sample 1 z per row
     ys = sample_1hot(num_per_sheet, num_classes)
+    ys_print = ys.detach().cpu().numpy() # ! print labels so we can backtrack
+    ys_print = '\n'.join(str(i) for i in ys_print)
     ys = G.shared(ys).view(num_per_sheet, 1, -1)
     ys = ys.repeat(1, num_midpoints + 2, 1).view(num_per_sheet * (num_midpoints + 2), -1)
   else:
-    ys = interp(G.shared(sample_1hot(num_per_sheet, num_classes)).view(num_per_sheet, 1, -1),
-                G.shared(sample_1hot(num_per_sheet, num_classes)).view(num_per_sheet, 1, -1),
+    ys1 = sample_1hot(num_per_sheet, num_classes)
+    ys2 = sample_1hot(num_per_sheet, num_classes)
+    ys_print1 = ys1.detach().cpu().numpy() # ! print labels so we can backtrack
+    ys_print2 = ys2.detach().cpu().numpy()
+    ys_print = '\n'.join( str(i)+'\t'+str(j) for i,j in zip(ys_print1,ys_print2))
+    ys = interp(G.shared(ys1).view(num_per_sheet, 1, -1),
+                G.shared(ys2).view(num_per_sheet, 1, -1),
                 num_midpoints).view(num_per_sheet * (num_midpoints + 2), -1)
   # Run the net--note that we've already passed y through G.shared.
   if G.fp16:
@@ -1011,10 +1028,12 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
   torchvision.utils.save_image(out_ims, image_filename,
                                nrow=num_midpoints + 2, normalize=True)
   # ! to back track
-  # print ('\n\nsee index (zs, ys) used for interpolation {}'.format(image_filename))
-  # print (zs)
-  # print (ys)
-  # print ('\n\n')
+  print_filename = '%s/%s/%d/interp%s%d_index.txt' % (samples_root, experiment_name,
+                                                      folder_number, interp_style,
+                                                      sheet_number)
+  with open(print_filename, 'w') as out_file:
+    out_file.write(ys_print)
+  
 
 
 # Convenience debugging function to print out gradnorms and shape from each layer
@@ -1079,6 +1098,7 @@ def name_from_config(config):
   'hier' if config['hier'] else None,
   'ema' if config['ema'] else None,
   'v%s' % config['z_var'], # ! we will add in variance names
+  'aug' if config['augment'] else None,
   config['name_suffix'] if config['name_suffix'] else None,
   ]
   if item is not None])

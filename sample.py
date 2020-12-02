@@ -128,7 +128,8 @@ def run(config):
                          experiment_name=experiment_name,
                          folder_number=config['sample_sheet_folder_num'], 
                          sheet_number=0,
-                         fix_z=fix_z, fix_y=fix_y, device='cuda')
+                         fix_z=fix_z, fix_y=fix_y, device='cuda', 
+                         z_var=config['z_var'])
   # Sample random sheet
   if config['sample_random']:
     print('Preparing random sample sheet...')
