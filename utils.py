@@ -630,10 +630,10 @@ def seed_rng(seed):
 
 # Utility to peg all roots to a base root
 # If a base root folder is provided, peg all other root folders to it.
-def update_config_roots(config, suffix=['data', 'weights', 'logs', 'samples']):
+def update_config_roots(config, folder_name=['data', 'weights', 'logs', 'samples']):
   if config['base_root']:
     print('Pegging all root folders to base root %s' % config['base_root'])
-    for key in suffix:
+    for key in folder_name:
       # ! this add "data" into the root, so we will need to move everything into the "data" folder ?? may not be great for us.
       config['%s_root' % key] = '%s/%s' % (config['base_root'], key)
   return config

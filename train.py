@@ -48,7 +48,7 @@ def run(config):
     config['skip_init'] = False # was true, but we should use false, so we init the nn.Embedding True
 
   if (('NF1' in config['dataset']) or ('Isic' in config['dataset'])) and ('hdf5' not in config['dataset']) : 
-    config = utils.update_config_roots(config, suffix=['weights', 'logs', 'samples']) # ! ignore the "data" otherwise we see "base/data/OurFolder" instead of "base/data"
+    config = utils.update_config_roots(config, folder_name=['weights', 'logs', 'samples']) # ! ignore the "data" otherwise we see "base/data/OurFolder" instead of "base/data"
   else: 
     config = utils.update_config_roots(config)
   
