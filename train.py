@@ -152,7 +152,12 @@ def run(config):
   if config['pretrain']: # config['resume'] or 
     state_dict['itr'] = 0
   # ! https://github.com/ajbrock/BigGAN-PyTorch/issues/43
-  loaders = utils.get_data_loaders(**{**config, 'batch_size': D_batch_size,
+
+  use_albumentations = False
+  if (('NF1' in config['dataset']) or ('Isic' in config['dataset'])) and ('hdf5' not in config['dataset']) : 
+    use_albumentations = True
+  loaders = utils.get_data_loaders( use_albumentations=use_albumentations, 
+                                    **{**config, 'batch_size': D_batch_size,
                                       'start_itr': state_dict['itr']})
 
 
@@ -196,7 +201,8 @@ def run(config):
 
     # ! skip last batch explicitly. 
     number_batch_per_epoch = len ( loaders[0] ) 
-
+    midpoint = number_batch_per_epoch//2
+    
     for i, (x, y) in enumerate(pbar):
       # Increment the iteration counter
       state_dict['itr'] += 1
@@ -234,7 +240,7 @@ def run(config):
 
       # Save weights and copies as configured at specified interval
       # ! we also save at end of epoch
-      if (i == number_batch_per_epoch-1) or (not (state_dict['itr'] % config['save_every'])):
+      if (i == number_batch_per_epoch-1) or (i==midpoint): # (not (state_dict['itr'] % config['save_every'])):
         if config['G_eval_mode']:
           print('Switchin G to eval mode...')
           G.eval()
@@ -245,7 +251,7 @@ def run(config):
 
       # Test every specified interval
       # ! we also save at end of epoch
-      if (i == number_batch_per_epoch-1) or (not (state_dict['itr'] % config['test_every'])):
+      if (i == number_batch_per_epoch-1) or (i==midpoint): # (not (state_dict['itr'] % config['test_every'])):
         if config['G_eval_mode']:
           print('Switchin G to eval mode...')
           G.eval()

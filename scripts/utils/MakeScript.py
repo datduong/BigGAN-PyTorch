@@ -1,60 +1,60 @@
 
 
-import os,sys,re,pickle
-import pandas as pd 
-import numpy as np 
-from datetime import datetime
+# import os,sys,re,pickle
+# import pandas as pd 
+# import numpy as np 
+# from datetime import datetime
 
-script = """#!/bin/bash
+# script = """#!/bin/bash
 
-# ! make dataset into hdf5 format
-cd /data/duongdb/BigGAN-PyTorch/
-rm -rf data_name*
-python make_hdf5.py --dataset data_name --batch_size 32 --data_root main_dir/
-cd main_dir/
-mkdir main_dir/data/
-mv ILSVRC128.hdf5 main_dir/data/
+# # ! make dataset into hdf5 format
+# cd /data/duongdb/BigGAN-PyTorch/
+# rm -rf data_name*
+# python make_hdf5.py --dataset data_name --batch_size 32 --data_root main_dir/
+# cd main_dir/
+# mkdir main_dir/data/
+# mv ILSVRC128.hdf5 main_dir/data/
 
-# ! computer inception score
-source /data/$USER/conda/etc/profile.d/conda.sh
-conda activate py37
-cd /data/duongdb/BigGAN-PyTorch/
-python calculate_inception_moments.py --dataset data_hdf5 --data_root main_dir/data
+# # ! computer inception score
+# source /data/$USER/conda/etc/profile.d/conda.sh
+# conda activate py37
+# cd /data/duongdb/BigGAN-PyTorch/
+# python calculate_inception_moments.py --dataset data_hdf5 --data_root main_dir/data
 
-# ! make output folder
-mkdir main_dir/weights/
-mkdir main_dir/samples/
-mkdir main_dir/logs/
-mkdir main_dir/weights/
+# # ! make output folder
+# mkdir main_dir/weights/
+# mkdir main_dir/samples/
+# mkdir main_dir/logs/
+# mkdir main_dir/weights/
 
-# ! copy weights from pretrained model
-# scp /data/duongdb/BigGAN-PyTorch/100k/* main_dir/weights/
+# # ! copy weights from pretrained model
+# # scp /data/duongdb/BigGAN-PyTorch/100k/* main_dir/weights/
 
-"""
+# """
 
-os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
+# os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 
 # data_name = 'Isic19'
 # data_hdf5 = data_name+'_hdf5'
 # main_dir = '/data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/'
 
-data_name = 'NF1Recrop'
-data_hdf5 = data_name+'_hdf5'
-main_dir = '/data/duongdb/SkinConditionImages11052020/Recrop/'
+# # data_name = 'NF1Recrop'
+# # data_hdf5 = data_name+'_hdf5'
+# # main_dir = '/data/duongdb/SkinConditionImages11052020/Recrop/'
 
-# data_name = 'NF1Zoom'
-# data_hdf5 = data_name+'_hdf5'
-# main_dir = '/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
+# # data_name = 'NF1Zoom'
+# # data_hdf5 = data_name+'_hdf5'
+# # main_dir = '/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
 
-script = re.sub('data_name',data_name,script)
-script = re.sub('data_hdf5',data_hdf5,script)
-script = re.sub('main_dir',main_dir,script)
+# script = re.sub('data_name',data_name,script)
+# script = re.sub('data_hdf5',data_hdf5,script)
+# script = re.sub('main_dir',main_dir,script)
 
-now = datetime.now() # current date and time
-scriptname = 'script-'+now.strftime("%m-%d-%H-%M-%S")+'.sh'
-fout = open(scriptname,'w')
-fout.write(script)
-fout.close()
+# now = datetime.now() # current date and time
+# scriptname = 'script-'+now.strftime("%m-%d-%H-%M-%S")+'.sh'
+# fout = open(scriptname,'w')
+# fout.write(script)
+# fout.close()
 
 
 
@@ -79,8 +79,8 @@ cd /data/duongdb/BigGAN-PyTorch/
 python train.py \
 --base_root rootname \
 --data_root rootname \
---dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem  \
---num_epochs 50 \
+--dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem \
+--num_epochs 20 \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -97,7 +97,7 @@ python train.py \
 --use_multiepoch_sampler \
 --z_var variance \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
---augment
+--augment 
 
 """
 
@@ -106,8 +106,8 @@ os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 batchsize = 128 # ! 152 batch is okay. larger size is recommended... but does it really matter when our data is smaller ? 
 arch_size = 96 # default for img net 96, don't have a smaller pretrained weight # ! not same as G_attn
 variance = 1
-dataset_name = {'NF1Recrop':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
-                'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
+dataset_name = {'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
+                'NF1Zoom_hdf5':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
                 }
 
 count=0
@@ -120,11 +120,15 @@ for dataname in dataset_name:
   script = re.sub('variance',str(variance),script)
   script = re.sub('dataset_name',dataname,script)
   script = re.sub('rootname',dataset_name[dataname],script)
+  if '_hdf5' not in dataname: 
+    script = re.sub ( ' --load_in_mem', '', script ) ## ! read from data to do aug. so don't load into mem.
+  else: 
+    script = re.sub ( ' --augment', '', script ) ## ! dont aug with hdf5, we just load into mem
   #
   now = datetime.now() # current date and time
   scriptname = 'script'+str(count)+'-'+now.strftime("%m-%d-%H-%M-%S")+'.sh'
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  os.system('sbatch --partition=gpu --time=12:00:00 --gres=gpu:p100:3 --mem=48g --cpus-per-task=32 ' + scriptname )
+  os.system('sbatch --partition=gpu --time=16:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
 

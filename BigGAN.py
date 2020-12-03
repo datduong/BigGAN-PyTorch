@@ -400,7 +400,7 @@ class Discriminator(nn.Module):
     # Get initial class-unconditional output
     out = self.linear(h)
     # Get projection of final featureset onto class vectors and add to evidence
-    out = out + torch.sum(self.embed(y) * h, 1, keepdim=True)
+    out = out + torch.sum(self.embed(y) * h, 1, keepdim=True) # ! img embed vec must stay close to its "cluster label vec"
     return out
 
 # Parallelized G_D to minimize cross-gpu communication

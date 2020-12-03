@@ -10,6 +10,7 @@ or train_fns.py.
 from __future__ import print_function
 import sys
 import os
+import re
 import numpy as np
 import time
 import datetime
@@ -17,6 +18,8 @@ import json
 import pickle
 from argparse import ArgumentParser
 import animal_hash
+
+import cv2
 
 import torch
 import torch.nn as nn
@@ -554,11 +557,60 @@ class MultiEpochSampler(torch.utils.data.Sampler):
     return len(self.data_source) * self.num_epochs - self.start_itr * self.batch_size
 
 
+# !
+def cv2_loader (path):
+  """
+  use cv2 loader, more compatible with @albumentations data aug. 
+  """
+  image = cv2.imread (path)
+  return cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # ! w x h x channels
+
+try: 
+  import albumentations
+  albumentations_ = albumentations.Compose([
+    albumentations.Transpose(p=0.5),
+    albumentations.VerticalFlip(p=0.5),
+    albumentations.HorizontalFlip(p=0.5),
+    albumentations.RandomBrightness(limit=0.2, p=0.75),
+    albumentations.RandomContrast(limit=0.2, p=0.75),
+    albumentations.OneOf([
+        albumentations.MotionBlur(blur_limit=5),
+        albumentations.MedianBlur(blur_limit=5),
+        albumentations.GaussianBlur(blur_limit=5),
+        albumentations.GaussNoise(var_limit=(5.0, 30.0)),
+    ], p=0.7),
+
+    albumentations.OneOf([
+        albumentations.OpticalDistortion(distort_limit=1.0),
+        albumentations.GridDistortion(num_steps=5, distort_limit=1.),
+        albumentations.ElasticTransform(alpha=3),
+    ], p=0.7),
+
+    albumentations.CLAHE(clip_limit=4.0, p=0.7),
+    albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
+    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
+    albumentations.Resize(128, 128),
+    albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
+    albumentations.Normalize(mean=[0.5,0.5,0.5],std=[0.5,0.5,0.5])
+  ])
+except: 
+  albumentations_ = None
+
+
+def albumentations_aug (image, transform=albumentations_): 
+  # ! transform image for model
+  image = transform(image=image) # ! uses albumentations
+  image = image['image'].astype(np.float32)
+  image = image.transpose(2, 0, 1) # makes channel x h x w instead of h x w x c
+  return torch.tensor(image).float()
+
+
 # Convenience function to centralize all data loaders
 def get_data_loaders(dataset, data_root=None, augment=False, batch_size=64, 
                      num_workers=8, shuffle=True, load_in_mem=False, hdf5=False,
                      pin_memory=True, drop_last=True, start_itr=0,
-                     num_epochs=500, use_multiepoch_sampler=False,
+                     num_epochs=500, use_multiepoch_sampler=False, 
+                     use_albumentations=False, # ! when we read in raw images, we will use own own aug_transformation
                      **kwargs):
 
   # Append /FILENAME.hdf5 to root if using hdf5
@@ -576,14 +628,18 @@ def get_data_loaders(dataset, data_root=None, augment=False, batch_size=64,
   # HDF5 datasets have their own inbuilt transform, no need to train_transform  
   if 'hdf5' in dataset:
     train_transform = None
+    
+  elif use_albumentations: # ! add in our own augmentation ?
+    dataset_kwargs['loader'] = cv2_loader
+    print('Data will be augmented with ... albumentations ...')
+    train_transform = albumentations_aug
+
   else:
     if augment:
       print('Data will be augmented...')
       if dataset in ['C10', 'C100']:
         train_transform = [transforms.RandomCrop(32, padding=4),
                            transforms.RandomHorizontalFlip()]
-      elif ('NF1' in dataset) or ('Isic' in dataset): # ! add in our own augmentation ?
-        train_transform = [transforms.RandomRotation(180)]
       else:
         train_transform = [ RandomCropLongEdge(),
                             transforms.Resize(image_size),
@@ -595,10 +651,10 @@ def get_data_loaders(dataset, data_root=None, augment=False, batch_size=64,
       else:
         train_transform = [CenterCropLongEdge(), transforms.Resize(image_size)]
       # train_transform = [transforms.Resize(image_size), transforms.CenterCrop]
-
+    # transform
     train_transform = transforms.Compose(train_transform + [
-                     transforms.ToTensor(),
-                     transforms.Normalize(norm_mean, norm_std)])
+                      transforms.ToTensor(),
+                      transforms.Normalize(norm_mean, norm_std)])
 
   train_set = which_dataset(root=data_root, transform=train_transform,
                             load_in_mem=load_in_mem, **dataset_kwargs)

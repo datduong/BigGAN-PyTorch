@@ -78,7 +78,6 @@ def default_loader(path):
   else:
     return pil_loader(path)
 
-
 class ImageFolder(data.Dataset):
   """A generic data loader where the images are arranged in this way: ::
 
@@ -115,7 +114,7 @@ class ImageFolder(data.Dataset):
     # If first time, walk the folder directory and save the 
     # results to a pre-computed file.
     else:
-      print('Generating  Index file %s...' % index_filename)
+      print('Generating Index file %s...' % index_filename)
       imgs = make_dataset(root, class_to_idx)
       np.savez_compressed(index_filename, **{'imgs' : imgs})
     if len(imgs) == 0:
@@ -124,6 +123,7 @@ class ImageFolder(data.Dataset):
 
     print ('see labels {}'.format(class_to_idx))
     print ('len imgs {}'.format(len(imgs)))
+
     self.root = root
     self.imgs = imgs
     self.classes = classes
@@ -151,18 +151,17 @@ class ImageFolder(data.Dataset):
         tuple: (image, target) where target is class_index of the target class.
     """
     if self.load_in_mem:
-        img = self.data[index]
-        target = self.labels[index]
+      img = self.data[index]
+      target = self.labels[index]
     else:
       path, target = self.imgs[index]
-      img = self.loader(str(path))
+      img = self.loader( path.decode('UTF-8') ) # ! probably is using PIL by default
       if self.transform is not None:
         img = self.transform(img)
     
     if self.target_transform is not None:
       target = self.target_transform(target)
     
-    # print(img.size(), target)
     return img, int(target)
 
   def __len__(self):
@@ -190,6 +189,7 @@ class ILSVRC_HDF5(data.Dataset):
       
     self.root = root
     self.num_imgs = len(h5.File(root, 'r')['labels'])
+    print ('len imgs {}'.format(self.num_imgs))
     
     # self.transform = transform
     self.target_transform = target_transform   
