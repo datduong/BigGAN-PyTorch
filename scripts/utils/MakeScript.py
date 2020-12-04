@@ -80,7 +80,7 @@ python train.py \
 --base_root rootname \
 --data_root rootname \
 --dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem \
---num_epochs 20 \
+--num_epochs 50 \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -97,7 +97,8 @@ python train.py \
 --use_multiepoch_sampler \
 --z_var variance \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
---augment 
+--augment \
+--experiment_name_suffix veryweakaug
 
 """
 
@@ -106,8 +107,10 @@ os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 batchsize = 128 # ! 152 batch is okay. larger size is recommended... but does it really matter when our data is smaller ? 
 arch_size = 96 # default for img net 96, don't have a smaller pretrained weight # ! not same as G_attn
 variance = 1
-dataset_name = {'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
-                'NF1Zoom_hdf5':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/'
+dataset_name = { 
+                # 'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
+                'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 
+                # 'Isic19':'/data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/'
                 }
 
 count=0
@@ -124,11 +127,12 @@ for dataname in dataset_name:
     script = re.sub ( ' --load_in_mem', '', script ) ## ! read from data to do aug. so don't load into mem.
   else: 
     script = re.sub ( ' --augment', '', script ) ## ! dont aug with hdf5, we just load into mem
+    script = re.sub ( ' --experiment_name_suffix veryweakaug', '', script ) ## ! dont aug with hdf5, we just load into mem
   #
   now = datetime.now() # current date and time
   scriptname = 'script'+str(count)+'-'+now.strftime("%m-%d-%H-%M-%S")+'.sh'
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  os.system('sbatch --partition=gpu --time=16:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+  os.system('sbatch --partition=gpu --time=12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
 

@@ -571,26 +571,29 @@ try:
     albumentations.Transpose(p=0.5),
     albumentations.VerticalFlip(p=0.5),
     albumentations.HorizontalFlip(p=0.5),
-    albumentations.RandomBrightness(limit=0.2, p=0.75),
-    albumentations.RandomContrast(limit=0.2, p=0.75),
-    albumentations.OneOf([
-        albumentations.MotionBlur(blur_limit=5),
-        albumentations.MedianBlur(blur_limit=5),
-        albumentations.GaussianBlur(blur_limit=5),
-        albumentations.GaussNoise(var_limit=(5.0, 30.0)),
-    ], p=0.7),
 
-    albumentations.OneOf([
-        albumentations.OpticalDistortion(distort_limit=1.0),
-        albumentations.GridDistortion(num_steps=5, distort_limit=1.),
-        albumentations.ElasticTransform(alpha=3),
-    ], p=0.7),
+    # albumentations.RandomBrightness(limit=0.2, p=0.75),
+    # albumentations.RandomContrast(limit=0.2, p=0.75),
+    
+    # albumentations.OneOf([
+    #     albumentations.MotionBlur(blur_limit=5),
+    #     albumentations.MedianBlur(blur_limit=5),
+    #     albumentations.GaussianBlur(blur_limit=5),
+    #     albumentations.GaussNoise(var_limit=(5.0, 30.0)),
+    # ], p=0.7),
+
+    # albumentations.OneOf([
+    #     albumentations.OpticalDistortion(distort_limit=1.0),
+    #     albumentations.GridDistortion(num_steps=5, distort_limit=1.),
+    #     albumentations.ElasticTransform(alpha=3),
+    # ], p=0.7),
 
     albumentations.CLAHE(clip_limit=4.0, p=0.7),
-    albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
-    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
+    # albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
+    # albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
+    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=45, border_mode=0, p=0.85),
     albumentations.Resize(128, 128),
-    albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
+    # albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
     albumentations.Normalize(mean=[0.5,0.5,0.5],std=[0.5,0.5,0.5])
   ])
 except: 
@@ -1063,6 +1066,14 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
   else:
     ys1 = sample_1hot(num_per_sheet, num_classes)
     ys2 = sample_1hot(num_per_sheet, num_classes)
+    for index,value in enumerate(ys1): # don't sample the same y-value for both ys1 and ys2
+      if value == ys2[index]: 
+        temp = value + 1
+        if temp == num_classes: # go over limit, notice index start at 0, so we use "equal"
+          ys1[index] = value - 1 # go back
+        else:  
+          ys1[index] = value + 1 # if we pick 2 for ys1, then we use 3 for ys2. 
+    #
     ys_print1 = ys1.detach().cpu().numpy() # ! print labels so we can backtrack
     ys_print2 = ys2.detach().cpu().numpy()
     ys_print = '\n'.join( str(i)+'\t'+str(j) for i,j in zip(ys_print1,ys_print2))
