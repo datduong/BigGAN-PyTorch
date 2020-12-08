@@ -82,7 +82,7 @@ python train.py \
 --base_root rootname \
 --data_root rootname \
 --dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem \
---num_epochs 100 \
+--num_epochs 50 \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -142,7 +142,7 @@ for dataname in dataset_name:
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  # os.system('sbatch --partition=gpu --time=16:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+  os.system('sbatch --partition=gpu --time=1-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
 
 
 
