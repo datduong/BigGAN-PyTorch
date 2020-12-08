@@ -379,7 +379,12 @@ def prepare_parser():
   parser.add_argument(
     '--Y_pair', type=str, default=None,
     help='a vector of string "1,2,3\t3,2,1"' )
-
+  parser.add_argument(
+    '--up_labels', type=str, default=None,
+    help='a vector of string "1,2,3"' )
+  parser.add_argument(
+    '--up_loss_scale', type=float, default=5.0,
+    help='a number to scale up our own labels' )
   return parser
 
 # Arguments for sample.py; not presently used in train.py

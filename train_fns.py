@@ -12,6 +12,18 @@ import utils
 import losses
 
 
+def make_weight_array(config,y): 
+  # ! we take in @y[counter].shape is torch.Size([128])
+  # so weighted loss has to be created on the fly ? vec_1 x position 
+  wt = torch.ones(y.shape,device='cuda',requires_grad=False)
+  indices = torch.zeros_like(wt, dtype=torch.bool, device = 'cuda') # torch.bool for indexing
+  for elem in config['up_labels']: # ! find position of where @y == @elem in @up_labels
+    indices = indices | (y == elem)  
+  # 
+  wt[indices] = wt[indices] * config['up_loss_scale']
+  wt = wt/wt.sum() # scale to sum up 1, later we will use sum instead of mean on all samples
+  return wt
+
 # Dummy training function for debugging
 def dummy_training_function():
   def train(x, y):
@@ -19,13 +31,13 @@ def dummy_training_function():
   return train
 
 
-def GAN_training_function(G, D, GD, z_, y_, ema, state_dict, config):
+def GAN_training_function(G, D, GD, z_, y_, ema, state_dict, config, discriminator_loss, generator_loss):
   def train(x, y):
     G.optim.zero_grad()
     D.optim.zero_grad()
     # How many chunks to split x and y into?
-    x = torch.split(x, config['batch_size'])
-    y = torch.split(y, config['batch_size'])
+    x = torch.split(x, config['batch_size']) 
+    y = torch.split(y, config['batch_size']) # ! input @y is num_D_steps x batchsize, so 128->512
     counter = 0
     
     # Optionally toggle D and G's "require_grad"
@@ -42,10 +54,18 @@ def GAN_training_function(G, D, GD, z_, y_, ema, state_dict, config):
         D_fake, D_real = GD(z_[:config['batch_size']], y_[:config['batch_size']], 
                             x[counter], y[counter], train_G=False, 
                             split_D=config['split_D'])
+
+        if config['up_labels'] is not None: 
+          # ! discriminator takes both real and fake data, so we need both weights for real and fake
+          wt_real = make_weight_array (config, y[counter]) # @y[counter] is the real y
+          wt_fake = make_weight_array (config, y_[:config['batch_size']]) # @y[counter] is the real y
+        else: 
+          wt_real = None
+          wt_fake = None 
          
         # Compute components of D's loss, average them, and divide by 
         # the number of gradient accumulations
-        D_loss_real, D_loss_fake = losses.discriminator_loss(D_fake, D_real)
+        D_loss_real, D_loss_fake = discriminator_loss(D_fake, D_real, wt_real, wt_fake)
         D_loss = (D_loss_real + D_loss_fake) / float(config['num_D_accumulations'])
         D_loss.backward()
         counter += 1
@@ -69,9 +89,16 @@ def GAN_training_function(G, D, GD, z_, y_, ema, state_dict, config):
     # If accumulating gradients, loop multiple times
     for accumulation_index in range(config['num_G_accumulations']):    
       z_.sample_()
-      y_.sample_()
-      D_fake = GD(z_, y_, train_G=True, split_D=config['split_D'])
-      G_loss = losses.generator_loss(D_fake) / float(config['num_G_accumulations'])
+      y_.sample_() # ! y_ # is array of label index, size = batch size (1 D array)
+
+      if config['up_labels'] is not None: 
+        wt_fake = make_weight_array (config, y_) # @y[counter] is the real y
+      else: 
+        wt_fake = None 
+      
+      D_fake = GD(z_, y_, train_G=True, split_D=config['split_D']) # dy=None, so we don't fit real data. 
+      # ! not weighted Generator loss? need to fix @y_ to get back label index ? 
+      G_loss = generator_loss(D_fake,wt_fake) / float(config['num_G_accumulations'])
       G_loss.backward()
     
     # Optionally apply modified ortho reg in G

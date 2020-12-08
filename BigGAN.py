@@ -427,7 +427,7 @@ class G_D(nn.Module):
     if split_D:
       D_fake = self.D(G_z, gy)
       if x is not None:
-        D_real = self.D(x, dy)
+        D_real = self.D(x, dy) # ! real loss is using @dy
         return D_fake, D_real
       else:
         if return_G_z:

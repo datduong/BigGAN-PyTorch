@@ -179,8 +179,18 @@ def run(config):
   fixed_y.sample_()
   # Loaders are loaded, prepare the training function
   if config['which_train_fn'] == 'GAN':
+    
+    if config['up_labels'] is None: # ! weighted loss ? 
+      discriminator_loss = losses.discriminator_loss
+      generator_loss = losses.generator_loss
+    else: 
+      discriminator_loss = losses.discriminator_loss_weighted
+      generator_loss = losses.generator_loss_weighted
+      
     train = train_fns.GAN_training_function(G, D, GD, z_, y_, 
-                                            ema, state_dict, config)
+                                            ema, state_dict, config, 
+                                            discriminator_loss=discriminator_loss,
+                                            generator_loss=generator_loss)
   # Else, assume debugging and use the dummy train fn
   else:
     train = train_fns.dummy_training_function()
@@ -202,6 +212,8 @@ def run(config):
     config['Y_pair'][0].requires_grad = False
     config['Y_pair'][1].requires_grad = False
 
+  if config['up_labels'] is not None: 
+    config['up_labels'] = np.array ( [ int(i) for i in config['up_labels'].split(',') ] )
 
   print('Beginning training at epoch %d...' % state_dict['epoch'])
   # Train for specified number of epochs, although we mostly track G iterations.
@@ -230,7 +242,6 @@ def run(config):
       else:
         x, y = x.to(device), y.to(device)
 
-      print (y)
       # ! error here. on the last batch. can hack around with batchsize to evenly split the data, but easier to just skip last batch
       if i == number_batch_per_epoch-1: # index start 0, so len=2, we stop at 1. 
         metrics = { 'G_loss': 0, 

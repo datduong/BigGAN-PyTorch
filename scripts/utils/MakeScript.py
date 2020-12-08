@@ -102,7 +102,8 @@ python train.py \
 --augment \
 --experiment_name_suffix veryveryweakaug \
 --Y_sample '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13' \
---Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10'
+--Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10' \
+--up_labels '4,5,6,7,9,10,13'
 
 """
 
@@ -142,7 +143,7 @@ for dataname in dataset_name:
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  os.system('sbatch --partition=gpu --time=1-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+  # os.system('sbatch --partition=gpu --time=1-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
 
 
 
