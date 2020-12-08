@@ -19,6 +19,8 @@ import pickle
 from argparse import ArgumentParser
 import animal_hash
 
+from copy import deepcopy 
+
 import cv2
 
 import torch
@@ -369,7 +371,15 @@ def prepare_parser():
     '--sv_log_interval', type=int, default=10,
     help='Iteration interval for logging singular values '
          ' (default: %(default)s)') 
-   
+
+  ###! my own inputs ###
+  parser.add_argument(
+    '--Y_sample', type=str, default=None,
+    help='a vector of string "1,2,3"' )
+  parser.add_argument(
+    '--Y_pair', type=str, default=None,
+    help='a vector of string "1,2,3\t3,2,1"' )
+
   return parser
 
 # Arguments for sample.py; not presently used in train.py
@@ -419,7 +429,7 @@ dset_dict = {'I32': dset.ImageFolder, 'I64': dset.ImageFolder,
              'NF1Recrop': dset.ImageFolder, 'NF1Recrop_hdf5': dset.ILSVRC_HDF5,
              'NF1Zoom': dset.ImageFolder, 'NF1Zoom_hdf5': dset.ILSVRC_HDF5, 
              'NF1ZoomIsic19': dset.ImageFolder, 'NF1ZoomIsic19_hdf5': dset.ILSVRC_HDF5, 
-             'Isic19': dset.ImageFolder, 'Isic19_hdf5': dset.ILSVRC_HDF5
+             'Isic19': dset.ImageFolder, 'Isic19_hdf5': dset.ILSVRC_HDF5,
              }
 imsize_dict = {'I32': 32, 'I32_hdf5': 32,
                'I64': 64, 'I64_hdf5': 64,
@@ -439,7 +449,7 @@ root_dict = {'I32': 'ImageNet', 'I32_hdf5': 'ILSVRC32.hdf5',
              'NF1Recrop': 'OneLabelOneFolder', # ! our own data
              'NF1Recrop_hdf5': 'ILSVRC128.hdf5',
              'NF1Zoom': 'OneLabelOneFolder', 'NF1Zoom_hdf5': 'ILSVRC128.hdf5', 
-             'NF1ZoomIsic19': 'OneLabelOneFolder', 'NF1ZoomIsic19_hdf5': 'ILSVRC128.hdf5', 
+             'NF1ZoomIsic19': 'OneLabelOneFolderWithIsic19', 'NF1ZoomIsic19_hdf5': 'ILSVRC128.hdf5', 
              'Isic19': 'OneLabelOneFolder', 'Isic19_hdf5': 'ILSVRC128.hdf5'
              }
 nclass_dict = {'I32': 1000, 'I32_hdf5': 1000,
@@ -591,7 +601,7 @@ try:
     albumentations.CLAHE(clip_limit=4.0, p=0.7),
     # albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
     # albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
-    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=45, border_mode=0, p=0.85),
+    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=45, border_mode=0, p=0.85),
     albumentations.Resize(128, 128),
     # albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
     albumentations.Normalize(mean=[0.5,0.5,0.5],std=[0.5,0.5,0.5])
@@ -1043,8 +1053,8 @@ def interp(x0, x1, num_midpoints):
 # Supports full, class-wise and intra-class interpolation
 def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                  samples_root, experiment_name, folder_number, sheet_number=0,
-                 fix_z=False, fix_y=False, device='cuda', z_var=1):
-  
+                 fix_z=False, fix_y=False, device='cuda', z_var=1, Y_sample=None, Y_pair=None):
+
   # ! edit this function to print labels, and use z-sampler instead of torch.randn
   scaler = np.sqrt(z_var)
   
@@ -1057,29 +1067,41 @@ def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
     zs = interp(torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
                 torch.randn(num_per_sheet, 1, G.dim_z, device=device) * scaler ,
                 num_midpoints).view(-1, G.dim_z)
+    
   if fix_y: # If fix y, only sample 1 z per row
-    ys = sample_1hot(num_per_sheet, num_classes)
+
+    if Y_sample is None:
+      ys = sample_1hot(num_per_sheet, num_classes)
+    else: 
+      ys = Y_sample # ! vector, 1 x len ... must have 16 elements, same as num_per_sheet
+
     ys_print = ys.detach().cpu().numpy() # ! print labels so we can backtrack
     ys_print = '\n'.join(str(i) for i in ys_print)
     ys = G.shared(ys).view(num_per_sheet, 1, -1)
-    ys = ys.repeat(1, num_midpoints + 2, 1).view(num_per_sheet * (num_midpoints + 2), -1)
+    ys = ys.repeat(1, num_midpoints + 2, 1).view(num_per_sheet * (num_midpoints + 2), -1) # ! batch x num_hidden_dim (i.e. 160 x 128)
+
   else:
-    ys1 = sample_1hot(num_per_sheet, num_classes)
-    ys2 = sample_1hot(num_per_sheet, num_classes)
-    for index,value in enumerate(ys1): # don't sample the same y-value for both ys1 and ys2
-      if value == ys2[index]: 
-        temp = value + 1
-        if temp == num_classes: # go over limit, notice index start at 0, so we use "equal"
-          ys1[index] = value - 1 # go back
-        else:  
-          ys1[index] = value + 1 # if we pick 2 for ys1, then we use 3 for ys2. 
-    #
+    if Y_pair is None:
+      ys1 = sample_1hot(num_per_sheet, num_classes)
+      ys2 = sample_1hot(num_per_sheet, num_classes)
+      for index,value in enumerate(ys1): # don't sample the same y-value for both ys1 and ys2
+        if value == ys2[index]: 
+          temp = value + 1
+          if temp == num_classes: # go over limit, notice index start at 0, so we use "equal"
+            ys1[index] = value - 1 # go back
+          else:  
+            ys1[index] = value + 1 # if we pick 2 for ys1, then we use 3 for ys2. 
+    else: 
+      ys1 = Y_pair[0]
+      ys2 = Y_pair[1]
+
     ys_print1 = ys1.detach().cpu().numpy() # ! print labels so we can backtrack
     ys_print2 = ys2.detach().cpu().numpy()
     ys_print = '\n'.join( str(i)+'\t'+str(j) for i,j in zip(ys_print1,ys_print2))
     ys = interp(G.shared(ys1).view(num_per_sheet, 1, -1),
                 G.shared(ys2).view(num_per_sheet, 1, -1),
                 num_midpoints).view(num_per_sheet * (num_midpoints + 2), -1)
+
   # Run the net--note that we've already passed y through G.shared.
   if G.fp16:
     zs = zs.half()

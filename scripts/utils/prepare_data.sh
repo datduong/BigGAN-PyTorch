@@ -61,3 +61,26 @@ mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x
 mkdir /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/weights/Var10
 scp /data/duongdb/BigGAN-PyTorch/100k/* /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/weights/Var10
 
+
+# ! combine isic2019 with zoom+center images. 
+ourdata=/data/duongdb/SkinConditionImages11052020/ZoomCenter/
+# scp -r $ourdata/OneLabelOneFolder/* $ourdata/OneLabelOneFolderWithIsic19
+# scp -r /data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/OneLabelOneFolder/* $ourdata/OneLabelOneFolderWithIsic19
+
+cd /data/duongdb/BigGAN-PyTorch/
+rm -rf NF1ZoomIsic19*
+python make_hdf5.py --dataset NF1ZoomIsic19 --batch_size 64 --data_root $ourdata > NF1ZoomIsic19_makedata.log
+
+cd $ourdata
+mkdir $ourdata/data/
+mv ILSVRC128.hdf5 $ourdata/data/
+
+source /data/$USER/conda/etc/profile.d/conda.sh
+conda activate py37
+cd /data/duongdb/BigGAN-PyTorch/
+python calculate_inception_moments.py --dataset NF1ZoomIsic19_hdf5 --data_root $ourdata/data/
+
+mkdir $ourdata/weights/
+mkdir $ourdata/samples/
+mkdir $ourdata/logs/
+

@@ -6,6 +6,8 @@ import torch.nn as nn
 import torchvision
 import os
 
+import numpy as np 
+
 import utils
 import losses
 
@@ -139,7 +141,19 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
                      experiment_name=experiment_name,
                      folder_number=state_dict['itr'],
                      z_=z_)
+  
   # Also save interp sheets
+  if config['Y_sample'] is not None: 
+    config['Y_sample'] = torch.LongTensor ( np.array ( [ int(k) for k in config['Y_sample'].split(',') ] ) ).to('cuda') 
+    config['Y_sample'].requires_grad = False
+    
+  if config['Y_pair'] is not None: 
+    config['Y_pair'] = config['Y_pair'].split('\t') # 2 strings 
+    config['Y_pair'][0] = torch.LongTensor ( np.array ( [int(k) for k in config['Y_pair'][0].split(',')] ) ).to('cuda')
+    config['Y_pair'][1] = torch.LongTensor ( np.array ( [int(k) for k in config['Y_pair'][1].split(',')] ) ).to('cuda')
+    config['Y_pair'][0].requires_grad = False
+    config['Y_pair'][1].requires_grad = False
+
   for fix_z, fix_y in zip([False, False, True], [False, True, False]):
     utils.interp_sheet(which_G,
                        num_per_sheet=16,
@@ -151,7 +165,9 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
                        folder_number=state_dict['itr'],
                        sheet_number=0,
                        fix_z=fix_z, fix_y=fix_y, device='cuda', 
-                       z_var=config['z_var'])
+                       z_var=config['z_var'], 
+                       Y_sample=config['Y_sample'], 
+                       Y_pair=config['Y_pair'] )
 
 
   

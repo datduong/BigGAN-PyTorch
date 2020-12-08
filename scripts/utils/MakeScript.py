@@ -76,11 +76,13 @@ conda activate py37
 
 cd /data/duongdb/BigGAN-PyTorch/
 
+# ! original lr --G_lr 1e-4 --D_lr 4e-4
+
 python train.py \
 --base_root rootname \
 --data_root rootname \
 --dataset dataset_name --parallel --shuffle --num_workers 16 --batch_size batchsize --load_in_mem \
---num_epochs 50 \
+--num_epochs 100 \
 --num_G_accumulations 4 --num_D_accumulations 4 \
 --num_D_steps 1 --G_lr 1e-4 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
 --G_attn 64 --D_attn 64 \
@@ -93,14 +95,19 @@ python train.py \
 --G_eval_mode \
 --G_ch arch_size --D_ch arch_size \
 --ema --use_ema --ema_start 2000 \
---test_every 200 --save_every 200 --num_best_copies 5 --num_save_copies 2 --seed 0 \
+--test_every 3 --save_every 3 --num_best_copies 5 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --z_var variance \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
 --augment \
---experiment_name_suffix veryweakaug
+--experiment_name_suffix veryveryweakaug \
+--Y_sample '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13' \
+--Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10'
 
 """
+
+# '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10'
+# '4,4,5,5,6,6,7,7,9,9,10,10,13,13'
 
 os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 
@@ -109,7 +116,8 @@ arch_size = 96 # default for img net 96, don't have a smaller pretrained weight 
 variance = 1
 dataset_name = { 
                 # 'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
-                'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 
+                # 'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 
+                'NF1ZoomIsic19':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/',
                 # 'Isic19':'/data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/'
                 }
 
@@ -134,5 +142,37 @@ for dataname in dataset_name:
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  os.system('sbatch --partition=gpu --time=12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+  # os.system('sbatch --partition=gpu --time=16:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+
+
+
+# # ! create pairs to view
+# labels = {'EverythingElse': 4, 'MA': 7, 'BKL': 2, 'IP': 6, 'AK': 0, 'TSC': 13, 'SCC': 12, 'BCC': 1, 'DF': 3, 'VASC': 14, 'HMI': 5, 'NF1': 10, 'MEL': 8, 'ML': 9, 'NV': 11}
+
+# our = 'EverythingElse HMI IP MA ML NF1 TSC'.split() 
+# pout = []
+# for p in our: 
+#   pout.append( labels[p] )
+
+# # 
+# pout = pout + pout 
+# pout.sort() 
+# pout = ','.join(str(p) for p in pout)
+# pout
+
+# pairs = [ 'HMI IP', 'HMI MA', 'IP MA', 'MA ML', 'ML NF1', 'MA NF1', 'EverythingElse NF1', 'EverythingElse TSC']
+# pairs = pairs + pairs
+# pairs.sort() 
+
+# p1 = []
+# p2 = []
+# for p in pairs: 
+#   p = p.split()
+#   p1.append (labels[p[0]]) 
+#   p2.append (labels[p[1]])
+
+# #
+# pout = ','.join(str(i) for i in p1)+'\t'+','.join(str(i) for i in p2) 
+
+
 

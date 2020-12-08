@@ -348,7 +348,7 @@ class Discriminator(nn.Module):
     self.blocks = nn.ModuleList([nn.ModuleList(block) for block in self.blocks])
     # Linear output layer. The output dimension is typically 1, but may be
     # larger if we're e.g. turning this into a VAE with an inference output
-    self.linear = self.which_linear(self.arch['out_channels'][-1], output_dim)
+    self.linear = self.which_linear(self.arch['out_channels'][-1], output_dim) # @output_dim=1 by default. 
     # Embedding for projection discrimination
     self.embed = self.which_embedding(self.n_classes, self.arch['out_channels'][-1])
 
@@ -398,9 +398,9 @@ class Discriminator(nn.Module):
     # Apply global sum pooling as in SN-GAN
     h = torch.sum(self.activation(h), [2, 3])
     # Get initial class-unconditional output
-    out = self.linear(h)
+    out = self.linear(h) # @output one single number for each obs. so it's like normal regression. 
     # Get projection of final featureset onto class vectors and add to evidence
-    out = out + torch.sum(self.embed(y) * h, 1, keepdim=True) # ! img embed vec must stay close to its "cluster label vec"
+    out = out + torch.sum(self.embed(y) * h, 1, keepdim=True) # dot product, # ! img embed vec must stay close to its "cluster label vec"
     return out
 
 # Parallelized G_D to minimize cross-gpu communication
