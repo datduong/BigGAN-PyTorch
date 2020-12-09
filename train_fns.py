@@ -15,14 +15,13 @@ import losses
 def make_weight_array(config,y): 
   # ! we take in @y[counter].shape is torch.Size([128])
   # so weighted loss has to be created on the fly ? vec_1 x position 
-  wt = torch.ones(y.shape,device='cuda',requires_grad=False)
-  indices = torch.zeros_like(wt, dtype=torch.bool, device = 'cuda') # torch.bool for indexing
+  wt = torch.ones(y.shape,device='cuda', requires_grad=False)
+  indices = torch.zeros_like(wt, dtype=torch.bool, device = 'cuda', requires_grad=False) # torch.bool for indexing
   for elem in config['up_labels']: # ! find position of where @y == @elem in @up_labels
     indices = indices | (y == elem)  
   # 
-  wt[indices] = wt[indices] * config['up_loss_scale']
-  wt = wt/wt.sum() # scale to sum up 1, later we will use sum instead of mean on all samples
-  return wt
+  wt[indices] = wt[indices] * config['up_loss_scale'] # don't add to 1... but that's okay
+  return wt.unsqueeze(0).transpose(0,1) # ! make into batchsize x 1, because D_fake is batchsize x 1
 
 # Dummy training function for debugging
 def dummy_training_function():
@@ -58,14 +57,15 @@ def GAN_training_function(G, D, GD, z_, y_, ema, state_dict, config, discriminat
         if config['up_labels'] is not None: 
           # ! discriminator takes both real and fake data, so we need both weights for real and fake
           wt_real = make_weight_array (config, y[counter]) # @y[counter] is the real y
-          wt_fake = make_weight_array (config, y_[:config['batch_size']]) # @y[counter] is the real y
+          wt_fake = make_weight_array (config, y_[:config['batch_size']]) # @y_ is the fake sampled from y_.sample_()
         else: 
           wt_real = None
           wt_fake = None 
          
         # Compute components of D's loss, average them, and divide by 
         # the number of gradient accumulations
-        D_loss_real, D_loss_fake = discriminator_loss(D_fake, D_real, wt_real, wt_fake)
+        # @D_fake is torch.Size([batchsize, 1])
+        D_loss_real, D_loss_fake = discriminator_loss(D_fake, D_real, wt_real, wt_fake) # @D_loss_real is a single number. 
         D_loss = (D_loss_real + D_loss_fake) / float(config['num_D_accumulations'])
         D_loss.backward()
         counter += 1

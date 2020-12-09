@@ -183,10 +183,11 @@ def run(config):
     if config['up_labels'] is None: # ! weighted loss ? 
       discriminator_loss = losses.discriminator_loss
       generator_loss = losses.generator_loss
-    else: 
+    else:
+      print ('\nusing weighted loss\n')
       discriminator_loss = losses.discriminator_loss_weighted
       generator_loss = losses.generator_loss_weighted
-      
+    #  
     train = train_fns.GAN_training_function(G, D, GD, z_, y_, 
                                             ema, state_dict, config, 
                                             discriminator_loss=discriminator_loss,
@@ -194,6 +195,7 @@ def run(config):
   # Else, assume debugging and use the dummy train fn
   else:
     train = train_fns.dummy_training_function()
+
   # Prepare Sample function for use with inception metrics
   sample = functools.partial(utils.sample,
                               G=(G_ema if config['ema'] and config['use_ema']

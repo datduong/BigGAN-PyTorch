@@ -383,7 +383,7 @@ def prepare_parser():
     '--up_labels', type=str, default=None,
     help='a vector of string "1,2,3"' )
   parser.add_argument(
-    '--up_loss_scale', type=float, default=5.0,
+    '--up_loss_scale', type=float, default=10.0,
     help='a number to scale up our own labels' )
   return parser
 
@@ -1192,6 +1192,7 @@ def name_from_config(config):
   'hier' if config['hier'] else None,
   'ema' if config['ema'] else None,
   'v%s' % config['z_var'], # ! we will add in variance names
+  'wl%s' % config['up_loss_scale'] if config['up_labels'] is not None else None, # ! we will add weights
   'aug' if config['augment'] else None,
   config['name_suffix'] if config['name_suffix'] else None,
   ]
