@@ -183,7 +183,8 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
                        fix_z=fix_z, fix_y=fix_y, device='cuda', 
                        z_var=config['z_var'], 
                        Y_sample=config['Y_sample'], 
-                       Y_pair=config['Y_pair'] )
+                       Y_pair=config['Y_pair'],
+                       z_var_scaler=config['z_var_scaler'])
 
 
   

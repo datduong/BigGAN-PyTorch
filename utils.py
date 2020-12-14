@@ -385,6 +385,9 @@ def prepare_parser():
   parser.add_argument(
     '--up_loss_scale', type=float, default=10.0,
     help='a number to scale up our own labels' )
+  parser.add_argument(
+    '--z_var_scaler', type=float, default=1.0,
+    help='Mult to noise variance z_var: %(default)s)') 
   return parser
 
 # Arguments for sample.py; not presently used in train.py
@@ -582,37 +585,32 @@ def cv2_loader (path):
 
 try: 
   import albumentations
+  image_size = 128
+  p_transform = 0.1
   albumentations_ = albumentations.Compose([
     albumentations.Transpose(p=0.5),
     albumentations.VerticalFlip(p=0.5),
     albumentations.HorizontalFlip(p=0.5),
+    albumentations.RandomBrightness(limit=0.2, p=p_transform), # ! lower the prob of all the transformation
+    albumentations.RandomContrast(limit=0.2, p=p_transform),
+    albumentations.OneOf([
+        albumentations.MotionBlur(blur_limit=5),
+        albumentations.MedianBlur(blur_limit=5),
+        albumentations.GaussianBlur(blur_limit=5),
+        albumentations.GaussNoise(var_limit=(5.0, 30.0)),
+    ], p=p_transform),
 
-    # ! add rotate? 
-    # albumentations.Rotate(limit=180,p=0.2),
-    
-    # albumentations.RandomBrightness(limit=0.2, p=0.75),
-    # albumentations.RandomContrast(limit=0.2, p=0.75),
-    
-    # albumentations.OneOf([
-    #     albumentations.MotionBlur(blur_limit=5),
-    #     albumentations.MedianBlur(blur_limit=5),
-    #     albumentations.GaussianBlur(blur_limit=5),
-    #     albumentations.GaussNoise(var_limit=(5.0, 30.0)),
-    # ], p=0.7),
+    albumentations.OneOf([
+        albumentations.OpticalDistortion(distort_limit=1.0),
+        albumentations.GridDistortion(num_steps=5, distort_limit=1.),
+        albumentations.ElasticTransform(alpha=3),
+    ], p=p_transform),
 
-    # albumentations.OneOf([
-    #     albumentations.OpticalDistortion(distort_limit=1.0),
-    #     albumentations.GridDistortion(num_steps=5, distort_limit=1.),
-    #     albumentations.ElasticTransform(alpha=3),
-    # ], p=0.7),
-
-    # albumentations.CLAHE(clip_limit=4.0, p=0.7),
-    # albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
-    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
-    # albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=45, border_mode=0, p=0.85),
-    albumentations.Resize(128, 128),
-    # albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
-    albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
+    albumentations.CLAHE(clip_limit=4.0, p=p_transform),
+    albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=p_transform),
+    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=p_transform),
+    albumentations.Resize(image_size, image_size),
+    albumentations.Cutout(max_h_size=int(image_size * 0.375), max_w_size=int(image_size * 0.375), num_holes=1, p=p_transform),
     albumentations.Normalize(mean=[0.5,0.5,0.5],std=[0.5,0.5,0.5])
   ])
 except: 
@@ -1062,10 +1060,10 @@ def interp(x0, x1, num_midpoints):
 # Supports full, class-wise and intra-class interpolation
 def interp_sheet(G, num_per_sheet, num_midpoints, num_classes, parallel,
                  samples_root, experiment_name, folder_number, sheet_number=0,
-                 fix_z=False, fix_y=False, device='cuda', z_var=1, Y_sample=None, Y_pair=None):
+                 fix_z=False, fix_y=False, device='cuda', z_var=1, Y_sample=None, Y_pair=None, z_var_scaler=1):
 
   # ! edit this function to print labels, and use z-sampler instead of torch.randn
-  scaler = np.sqrt(z_var)
+  scaler = np.sqrt(z_var * z_var_scaler) # ! scale up the variance, so we have more variations
   
   # ! scale @zs by the variance otherwise it is just a N(0,1) from the torch.randn
   # Prepare zs and ys
@@ -1196,6 +1194,7 @@ def name_from_config(config):
   'hier' if config['hier'] else None,
   'ema' if config['ema'] else None,
   'v%s' % config['z_var'], # ! we will add in variance names
+  'vscale%s' % config['z_var_scaler'], 
   'wl%s' % config['up_loss_scale'] if config['up_labels'] is not None else None, # ! we will add weights
   'aug' if config['augment'] else None,
   config['name_suffix'] if config['name_suffix'] else None,

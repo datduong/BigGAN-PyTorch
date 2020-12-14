@@ -98,28 +98,30 @@ python train.py \
 --test_every 3 --save_every 3 --num_best_copies 5 --num_save_copies 2 --seed 0 \
 --use_multiepoch_sampler \
 --z_var variance \
+--z_var_scaler 10 \
 --pretrain /data/duongdb/BigGAN-PyTorch/100k \
 --augment \
---experiment_name_suffix veryveryweakaug \
---Y_sample '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13' \
---Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10' \
---up_labels '4,5,6,7,9,10,13' \
---up_loss_scale 100
+--experiment_name_suffix pt01 \
+--Y_sample '0,0,1,1,2,2,3,3,4,4,4,5,5,5,6,6' \
+--Y_pair '0,0,5,5,1,1,1,1,2,2,3,3,3,3,4,4\t5,5,6,6,2,2,3,3,3,3,4,4,5,5,5,5'
+
+# --Y_sample '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13' \
+# --Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10' 
 
 """
 
 # '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10'
-# '4,4,5,5,6,6,7,7,9,9,10,10,13,13'
+
 
 os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 
 batchsize = 128 # ! 152 batch is okay. larger size is recommended... but does it really matter when our data is smaller ? 
 arch_size = 96 # default for img net 96, don't have a smaller pretrained weight # ! not same as G_attn
-variance = 10
+variance = 1
 dataset_name = { 
                 # 'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
-                # 'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 
-                'NF1ZoomIsic19':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/',
+                'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 
+                # 'NF1ZoomIsic19':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/',
                 # 'Isic19':'/data/duongdb/ISIC2020-SkinCancerBinary/data-by-cdeotte/jpeg-isic2019-512x512/'
                 }
 
@@ -144,7 +146,7 @@ for dataname in dataset_name:
   fout = open(scriptname,'w')
   fout.write(script)
   fout.close()
-  os.system('sbatch --partition=gpu --time=1-12:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
+  os.system('sbatch --partition=gpu --time=1-00:00:00 --gres=gpu:p100:4 --mem=48g --cpus-per-task=32 ' + scriptname )
 
 
 
@@ -177,4 +179,19 @@ for dataname in dataset_name:
 # pout = ','.join(str(i) for i in p1)+'\t'+','.join(str(i) for i in p2) 
 
 
+
+
+
+# z = list ( set ( '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13'.split(',' ) ) ) 
+# z = [int (i) for i in z]
+# z.sort()
+# m = {v:i for i,v in enumerate(z)}
+
+# import numpy as np 
+# z2 = [k for k,v in enumerate(m)]
+# ','.join(str(i) for i in np.repeat(z2,2))
+
+# z = '10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10'.split(',')
+# z = [int (i) for i in z]
+# ','.join(str(m[k]) for k in z )
 
