@@ -102,10 +102,9 @@ python train.py \
 --augment \
 --experiment_name_suffix veryveryweakaug \
 --Y_sample '4,4,5,5,6,6,7,7,9,9,9,10,10,10,13,13' \
---Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10' 
-
-# \
-# --up_labels '4,5,6,7,9,10,13'
+--Y_pair '4,4,4,4,5,5,5,5,6,6,7,7,7,7,9,9\t10,10,13,13,6,6,7,7,7,7,9,9,10,10,10,10' \
+--up_labels '4,5,6,7,9,10,13' \
+--up_loss_scale 100
 
 """
 
@@ -116,7 +115,7 @@ os.chdir('/data/duongdb/BigGAN-PyTorch/scripts')
 
 batchsize = 128 # ! 152 batch is okay. larger size is recommended... but does it really matter when our data is smaller ? 
 arch_size = 96 # default for img net 96, don't have a smaller pretrained weight # ! not same as G_attn
-variance = 1
+variance = 10
 dataset_name = { 
                 # 'NF1Recrop_hdf5':'/data/duongdb/SkinConditionImages11052020/Recrop/', # _hdf5
                 # 'NF1Zoom':'/data/duongdb/SkinConditionImages11052020/ZoomCenter/', 

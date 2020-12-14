@@ -587,6 +587,9 @@ try:
     albumentations.VerticalFlip(p=0.5),
     albumentations.HorizontalFlip(p=0.5),
 
+    # ! add rotate? 
+    # albumentations.Rotate(limit=180,p=0.2),
+    
     # albumentations.RandomBrightness(limit=0.2, p=0.75),
     # albumentations.RandomContrast(limit=0.2, p=0.75),
     
@@ -603,12 +606,13 @@ try:
     #     albumentations.ElasticTransform(alpha=3),
     # ], p=0.7),
 
-    albumentations.CLAHE(clip_limit=4.0, p=0.7),
+    # albumentations.CLAHE(clip_limit=4.0, p=0.7),
     # albumentations.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5),
-    # albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
-    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=45, border_mode=0, p=0.85),
+    albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85),
+    # albumentations.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=45, border_mode=0, p=0.85),
     albumentations.Resize(128, 128),
     # albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
+    albumentations.Cutout(max_h_size=int(128 * 0.375), max_w_size=int(128 * 0.375), num_holes=1, p=0.7),
     albumentations.Normalize(mean=[0.5,0.5,0.5],std=[0.5,0.5,0.5])
   ])
 except: 
